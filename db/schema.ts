@@ -13,7 +13,8 @@ import {
   primaryKey,
 } from "drizzle-orm/pg-core";
 
-// Money is stored in cents. Tax rates are stored in basis points (6.25% = 625).
+// Money is stored in cents. Tax rates are stored in thousandths of a percent
+// (8.875% = 8875), so rates like New York City's stay exact.
 
 export const roleEnum = pgEnum("role", ["owner", "employee", "client"]);
 export const frequencyEnum = pgEnum("frequency", [
@@ -44,6 +45,7 @@ export const businesses = pgTable("businesses", {
   address: text("address"),
   phone: text("phone"),
   email: text("email"),
+  // Small logo stored inline as a data: URL, so no file storage is needed yet.
   logoUrl: text("logo_url"),
   // Default start and end point for routes, usually the shop.
   homeAddress: text("home_address"),
@@ -141,7 +143,7 @@ export const taxRates = pgTable("tax_rates", {
     .notNull()
     .references(() => businesses.id),
   name: text("name").notNull(),
-  basisPoints: integer("basis_points").notNull(),
+  rateMilli: integer("rate_milli").notNull(),
   isDefault: boolean("is_default").notNull().default(false),
 });
 
@@ -265,7 +267,7 @@ export const invoices = pgTable(
     stopId: integer("stop_id").references(() => stops.id),
     number: integer("number").notNull(),
     status: invoiceStatusEnum("status").notNull().default("draft"),
-    taxBasisPoints: integer("tax_basis_points").notNull().default(0),
+    taxRateMilli: integer("tax_rate_milli").notNull().default(0),
     subtotalCents: integer("subtotal_cents").notNull().default(0),
     taxCents: integer("tax_cents").notNull().default(0),
     totalCents: integer("total_cents").notNull().default(0),
@@ -277,6 +279,8 @@ export const invoices = pgTable(
   },
   (t) => [
     uniqueIndex("invoices_number_idx").on(t.businessId, t.number),
+    // One invoice per finished stop.
+    uniqueIndex("invoices_stop_idx").on(t.stopId),
     index("invoices_client_idx").on(t.clientId),
   ],
 );

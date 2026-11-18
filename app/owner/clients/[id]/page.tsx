@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, jobs, properties, users } from "@/db/schema";
+import { clients, invoices, jobs, properties, users } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { hasMapsKey } from "@/lib/geocode";
 import { formatCents } from "@/lib/money";
@@ -14,7 +14,9 @@ import {
   updateJob,
   updateProperty,
 } from "@/app/actions/clients";
+import { newInvoice } from "@/app/actions/invoices";
 import ActionForm from "@/components/ActionForm";
+import { STATUS_LABELS } from "@/components/InvoiceView";
 import { ClientFields, FREQUENCY_LABELS, JobFields } from "@/components/Fields";
 
 export default async function ClientPage({ params }: { params: Promise<{ id: string }> }) {
@@ -41,6 +43,11 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
     : [];
   const login = await db.query.users.findFirst({ where: eq(users.clientId, client.id) });
   const mapsOn = hasMapsKey();
+  const clientInvoices = await db
+    .select()
+    .from(invoices)
+    .where(eq(invoices.clientId, client.id))
+    .orderBy(desc(invoices.number));
 
   return (
     <>
@@ -146,6 +153,30 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
           </p>
         )}
       </details>
+
+      <h2>Invoices</h2>
+      {clientInvoices.length === 0 ? (
+        <p className="muted">No invoices yet.</p>
+      ) : (
+        <table style={{ marginBottom: 12 }}>
+          <tbody>
+            {clientInvoices.map((inv) => (
+              <tr key={inv.id}>
+                <td>
+                  <Link href={`/owner/invoices/${inv.id}`}>#{inv.number}</Link>
+                </td>
+                <td>{inv.createdAt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</td>
+                <td>{STATUS_LABELS[inv.status]}</td>
+                <td style={{ textAlign: "right" }}>{formatCents(inv.totalCents)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <form action={newInvoice}>
+        <input type="hidden" name="clientId" value={client.id} />
+        <button className="secondary">New invoice</button>
+      </form>
 
       <h2>Client login</h2>
       <ActionForm action={clientLogin} submit={login ? "Give a new PIN" : "Create login"} keep secondary>
