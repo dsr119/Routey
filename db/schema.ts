@@ -272,7 +272,10 @@ export const invoices = pgTable(
     taxCents: integer("tax_cents").notNull().default(0),
     totalCents: integer("total_cents").notNull().default(0),
     stripeSessionId: text("stripe_session_id"),
-    payUrl: text("pay_url"),
+    // Random token in the client's pay link (/pay/<token>). Anyone with the
+    // link can see and pay this one invoice, nothing else.
+    payToken: text("pay_token"),
+    emailedAt: timestamp("emailed_at", { withTimezone: true }),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     createdAt: createdAt(),
@@ -281,6 +284,7 @@ export const invoices = pgTable(
     uniqueIndex("invoices_number_idx").on(t.businessId, t.number),
     // One invoice per finished stop.
     uniqueIndex("invoices_stop_idx").on(t.stopId),
+    uniqueIndex("invoices_pay_token_idx").on(t.payToken),
     index("invoices_client_idx").on(t.clientId),
   ],
 );

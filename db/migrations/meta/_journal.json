@@ -29,6 +29,13 @@
       "when": 1795030179530,
       "tag": "0003_invoice_per_stop",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795030473838,
+      "tag": "0004_invoice_pay_token",
+      "breakpoints": true
     }
   ]
 }

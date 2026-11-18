@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { clients, invoiceLines, invoices, payments, taxRates } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { createInvoice, refreshTotals, sendInvoice } from "@/lib/invoicing";
+import { createInvoice, emailInvoice, refreshTotals, sendInvoice } from "@/lib/invoicing";
 import { parseDollars } from "@/lib/money";
 import type { ActionResult } from "@/components/ActionForm";
 
@@ -114,7 +114,17 @@ export async function send(_: ActionResult, form: FormData): Promise<ActionResul
   }
   const result = await sendInvoice(invoice.id);
   refresh(invoice.id);
-  return result.ok ? { message: "Sent." } : { error: result.error };
+  if (!result.ok) return { error: result.error };
+  return { message: result.emailError ? `Sent, but not emailed: ${result.emailError}` : "Sent." };
+}
+
+export async function emailAgain(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const owner = await requireRole("owner");
+  const invoice = await ownedInvoice(owner.businessId, Number(form.get("invoiceId")));
+  if (!invoice || invoice.status !== "sent") return { error: "Only unpaid invoices can be emailed." };
+  const result = await emailInvoice(invoice.id);
+  refresh(invoice.id);
+  return result.sent ? { message: "Emailed." } : { error: result.error };
 }
 
 const METHODS = ["cash", "check", "card", "other"];
@@ -124,6 +134,7 @@ export async function markPaid(_: ActionResult, form: FormData): Promise<ActionR
   const invoice = await ownedInvoice(owner.businessId, Number(form.get("invoiceId")));
   if (!invoice) return { error: "Invoice not found." };
   if (invoice.status === "paid" || invoice.status === "void") return { error: "This invoice is closed." };
+  if (invoice.totalCents <= 0) return { error: "The invoice total is $0." };
   const method = String(form.get("method"));
   if (!METHODS.includes(method)) return { error: "Pick how they paid." };
 

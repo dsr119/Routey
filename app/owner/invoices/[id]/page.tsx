@@ -4,11 +4,12 @@ import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { payments, taxRates } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { invoiceWithLines } from "@/lib/invoicing";
+import { invoiceWithLines, payLink } from "@/lib/invoicing";
 import { formatPercent } from "@/lib/invoice-math";
 import { centsToInput, formatCents } from "@/lib/money";
 import {
   addLine,
+  emailAgain,
   markPaid,
   removeLine,
   send,
@@ -81,6 +82,29 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
       )}
 
       <InvoiceView {...data} business={data.business} />
+
+      {invoice.status === "sent" && invoice.payToken && (
+        <section className="box">
+          <p style={{ marginTop: 0 }}>
+            {invoice.emailedAt
+              ? `Emailed to ${data.client?.email} on ${invoice.emailedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
+              : data.client?.email
+                ? "Not emailed yet."
+                : "This client has no email. Share the pay link another way, or add their email and send it."}
+          </p>
+          <p>
+            Pay link: <a href={payLink(invoice.payToken)}>{payLink(invoice.payToken)}</a>
+          </p>
+          <p className="muted">
+            To take a card in person, open the pay link on your phone and type the card in.
+          </p>
+          {data.client?.email && (
+            <ActionForm action={emailAgain} submit={invoice.emailedAt ? "Email again" : "Email it"} keep className="" secondary>
+              <input type="hidden" name="invoiceId" value={invoice.id} />
+            </ActionForm>
+          )}
+        </section>
+      )}
 
       {draft && (
         <>
