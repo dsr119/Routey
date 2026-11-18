@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { applyOrder, moveStop, positions, splitForOptimize, stopsAway } from "@/lib/routing";
 import { addDays, isDay, minutesBetween, todayIn } from "@/lib/dates";
+import { directionsThrough, directionsTo } from "@/lib/maps-links";
 
 const p = { lat: 0, lng: 0 };
 
@@ -89,5 +90,31 @@ describe("dates", () => {
     const a = new Date("2026-11-18T10:00:00Z");
     expect(minutesBetween(a, new Date("2026-11-18T10:31:20Z"))).toBe(31);
     expect(minutesBetween(a, new Date("2026-11-18T09:00:00Z"))).toBe(0);
+  });
+});
+
+describe("Google Maps links", () => {
+  it("links straight to one address", () => {
+    expect(directionsTo("12 Oak St")).toContain("destination=12%20Oak%20St");
+  });
+
+  it("ends at the route's end point when there is one", () => {
+    const url = new URL(directionsThrough(["A", "B"], "Shop")!);
+    expect(url.searchParams.get("destination")).toBe("Shop");
+    expect(url.searchParams.get("waypoints")).toBe("A|B");
+  });
+
+  it("ends at the last stop without an end point", () => {
+    const url = new URL(directionsThrough(["A", "B"])!);
+    expect(url.searchParams.get("destination")).toBe("B");
+    expect(url.searchParams.get("waypoints")).toBe("A");
+  });
+
+  it("never asks for more than 9 waypoints", () => {
+    const many = Array.from({ length: 14 }, (_, i) => `S${i + 1}`);
+    const url = new URL(directionsThrough(many, "Shop")!);
+    expect(url.searchParams.get("waypoints")!.split("|")).toHaveLength(9);
+    expect(url.searchParams.get("destination")).toBe("S10");
+    expect(directionsThrough([])).toBeNull();
   });
 });
