@@ -4,6 +4,8 @@ Routey is a web app for a landscaping, property management and snow plowing busi
 
 Nothing gets built until this plan is approved.
 
+It starts as an app for one business, but it may be opened to other businesses later. The plan builds for that from day one where it's cheap to do so.
+
 ## Decisions so far
 
 - Web app first, made to work well on a phone. App store versions can come later.
@@ -13,7 +15,10 @@ Nothing gets built until this plan is approved.
 - Clients see how many stops away the crew is, not a live map.
 - Receipt photos are uploaded by employees and the owner.
 - Employees and clients log in with an ID number and a PIN.
-- QuickBooks is what he uses now, so Routey syncs to it.
+- He uses QuickBooks Online, so Routey syncs to it.
+- He takes cards both in person and by link.
+- Prices are usually set per property per visit, but sometimes change.
+- Routey may be offered to other businesses later.
 - The look stays plain: white background, black text, one accent color, system font, big buttons. No dashboards full of charts, no stock images, no animation.
 
 ## Tech stack
@@ -43,7 +48,7 @@ Logs in with email and password (stronger than a PIN, since the owner can see ev
 - **Invoices and estimates**: create, edit, send, mark paid. Turn an estimate into an invoice.
 - **Calendar**: set open time slots for estimates. See what clients booked.
 - **Reports**: income by month and year to date, expenses from receipts, mileage per employee.
-- **Settings**: sales tax rate(s), business info shown on invoices, employee and client logins.
+- **Settings**: sales tax rate(s), business info shown on invoices, employee and client logins, and whether invoices go out on their own when a stop is marked Done or wait for him to look them over.
 
 ### Employee
 
@@ -51,7 +56,7 @@ Logs in with ID number and PIN.
 
 - Clock in and clock out.
 - **My route**: today's stops in order, with a button to open directions in Google Maps.
-- At each stop: **Arrived** starts the timer, **Done** stops it and sends the client their invoice with a pay link by email and text.
+- At each stop: **Arrived** starts the timer, **Done** stops it and sends the client their invoice with a pay link by email and text. The invoice uses the property's usual price. If the job was different (extra work, a bigger storm), the employee can add a line with a note, or the owner can set invoices to wait for his review before they go out.
 - **Can't complete**: pick or type a reason, attach photos. The owner is told.
 - **Notes for owner**: things noticed at the property that the client should have done. Saved on the client's profile.
 - **Receipts**: snap a photo of a fuel or materials receipt, enter the amount, attach it to a client or mark it general.
@@ -67,11 +72,13 @@ Logs in with ID number and PIN.
 
 ## Data model
 
-Main tables, kept small.
+Main tables, kept small. Every table except businesses carries a business id, so one business never sees another's data. This costs almost nothing now and saves a rewrite if Routey goes public.
 
-- **users**: role (owner, employee, client), name, phone, email, ID number, hashed PIN or password.
+- **businesses**: name, address, phone, logo, Stripe account, QuickBooks connection, settings.
+
+- **users**: role (owner, employee, client), name, phone, email, ID number, hashed PIN or password. ID numbers are unique across all of Routey, so nobody has to type a business code to log in.
 - **clients**: contact info, billing email, Stripe customer id, QuickBooks customer id.
-- **properties**: belongs to a client. Address, map location, work description, price, frequency, taxable yes or no. A client can have several properties, which matters for property management.
+- **properties**: belongs to a client. Address, map location, work description, usual price, frequency, taxable yes or no. A client can have several properties, which matters for property management.
 - **photos**: file link, attached to a property, stop, problem report, or receipt.
 - **routes**: date, employee, status.
 - **stops**: belongs to a route. Property, order number, status (waiting, on site, done, can't complete), arrived at, done at, reason if not done.
@@ -87,13 +94,15 @@ Main tables, kept small.
 
 ## Integrations
 
-**Stripe.** Each invoice gets a Stripe Checkout link. When the client pays, Stripe tells Routey and the invoice is marked paid. Stripe charges about 2.9% plus 30 cents per card payment. For in-person cards, the owner can open the same link on his phone and type the card in. Tap to Pay can come later.
+**Stripe.** Each invoice gets a Stripe Checkout link. When the client pays, Stripe tells Routey and the invoice is marked paid. Stripe charges about 2.9% plus 30 cents per card payment. For in-person cards, Phase 1 lets the owner or employee open the pay link on their phone and type the card in. Phase 3 adds a Stripe card reader for chip and tap. The readers that work with a web app connect over Wi-Fi or cellular and cost roughly $250 to $350. Cheaper Bluetooth readers need the phone app version. Tap to Pay on the phone itself needs the phone app version, so it waits for that.
+
+If Routey goes public, each business connects its own Stripe account (Stripe Connect) so money goes straight to them. For now it's just his account.
 
 **Twilio.** Sends invoice texts and problem alerts. US carriers require business texting to be registered (called A2P 10DLC). Approval takes from a few days to a few weeks and has small one-time and monthly fees. We should start that early. Email works while it's pending.
 
 **Google Maps.** Turns typed addresses into map points and suggests full addresses as you type. The Routes API reorders stops into the shortest drive. It handles up to 25 stops per request. If a route ever needs more, we split it or move to Google's Route Optimization API.
 
-**QuickBooks Online.** One way to start: Routey sends clients, invoices and payments to QuickBooks so the books stay current without typing things twice. Going live with Intuit needs a short app review on their side. If he uses QuickBooks Desktop instead of Online, this gets much harder and we should talk.
+**QuickBooks Online.** One way to start: Routey sends clients, invoices and payments to QuickBooks so the books stay current without typing things twice. Going live with Intuit needs a short app review on their side. He uses QuickBooks Online, which is the easier one to connect.
 
 ## Order of work
 
@@ -125,12 +134,23 @@ At the end of Phase 1 he can run a real day: plan a route, have a guy work it, b
 - Income reports, monthly and year to date, with expenses.
 - Repeating jobs: weekly or every two weeks fill routes on their own. Snow: a "storm run" button that builds routes for all plow clients at once.
 - QuickBooks Online sync.
+- Stripe card reader for in-person payments.
 
 ### Phase 4: GPS
 
 - Auto arrival: timer starts when the phone gets within a set distance of the property, and stops when it leaves (with Done still needed to bill).
 - Mileage while clocked in, stopping at clock out.
 - Live employee locations on the owner's map.
+
+### Later: open it to other businesses
+
+Only if he and you decide to.
+
+- Sign-up page for new businesses.
+- Each business connects its own Stripe and QuickBooks.
+- A monthly subscription to charge businesses for using Routey.
+- Phone app versions for the App Store and Google Play (also fixes the GPS gaps below).
+- Bigger routes through Google's Route Optimization API if some businesses run more than 25 stops a day.
 
 ## Risks
 
@@ -140,14 +160,10 @@ At the end of Phase 1 he can run a real day: plan a route, have a guy work it, b
 
 **Texting registration delay.** See Twilio above. Start early.
 
-**Sales tax.** Whether lawn care or plowing is taxable depends on the state. Routey lets the owner set rates and mark each item taxable. It doesn't decide for him.
+**Sales tax.** Whether lawn care or plowing is taxable depends on the state, and the rate depends on the town. Routey lets each owner set rates and mark each item taxable. It doesn't decide for them, which also means it works in any state if it goes public.
 
 **Monthly costs.** Hosting and database start free. Texts are about a penny each plus a phone number around $1 to $2 a month. Google Maps has a free monthly allowance that a small business likely stays under. Stripe takes its fee per payment. These are estimates.
 
 ## Open questions
 
-1. Does he use QuickBooks Online or QuickBooks Desktop?
-2. About how many employees, clients and stops per day?
-3. What state is the business in (for sales tax and texting rules)?
-4. Does he take cards in person often, or mostly by link?
-5. Is pricing per property per visit, or does it vary each time?
+None right now. Answered so far: QuickBooks Online, cards in person and by link, prices usually per property per visit, and Routey may go public later.
