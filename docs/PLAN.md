@@ -19,7 +19,7 @@ It starts as an app for one business, but it may be opened to other businesses l
 - He takes cards both in person and by link.
 - Prices are usually set per property per visit, but sometimes change.
 - Routey may be offered to other businesses later.
-- The look stays plain: white background, black text, one accent color, system font, big buttons. No dashboards full of charts, no stock images, no animation.
+- The look stays plain for now: white background, dark text, one accent color, big buttons. No dashboards full of charts, no stock images, no animation. Ready-made pieces like a calendar or a font are fine where they save time. It can be made prettier later.
 
 ## Tech stack
 
@@ -28,7 +28,7 @@ It starts as an app for one business, but it may be opened to other businesses l
 | App | Next.js with TypeScript | One codebase for pages and server code. Easy to host. |
 | Database and photo storage | Postgres and file storage on Supabase | One service for data and pictures. Free tier to start. |
 | Hosting | Vercel | Pushes to GitHub deploy on their own. Free tier to start. |
-| Styling | Plain CSS | No UI kit, nothing fancy. |
+| Styling | Plain CSS, plus ready-made pieces where they save time (calendar, date picker, a font) | Simple now, easy to dress up later. |
 | Payments | Stripe Checkout links | Stripe hosts the card form, so card numbers never touch our server. |
 | Texts | Twilio | |
 | Email | Resend or Postmark | Cheap, reliable invoice emails. |
