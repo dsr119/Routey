@@ -15,8 +15,11 @@ export default async function OwnerLayout({ children }: { children: React.ReactN
         title={biz?.name ?? "Routey"}
         links={[
           { href: "/owner", label: "Today" },
+          { href: "/owner/routes", label: "Routes" },
           { href: "/owner/clients", label: "Clients" },
+          { href: "/owner/crews", label: "Crews" },
           { href: "/owner/team", label: "Team" },
+          { href: "/owner/settings", label: "Settings" },
         ]}
       />
       <main>{children}</main>
