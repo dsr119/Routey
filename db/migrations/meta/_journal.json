@@ -8,6 +8,34 @@
       "when": 1795029173140,
       "tag": "0000_init",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795029762885,
+      "tag": "0001_business_timezone",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795030151504,
+      "tag": "0002_tax_rate_milli",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795030179530,
+      "tag": "0003_invoice_per_stop",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795030473838,
+      "tag": "0004_invoice_pay_token",
+      "breakpoints": true
     }
   ]
 }

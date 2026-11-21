@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "invoices_stop_idx" ON "invoices" USING btree ("stop_id");
