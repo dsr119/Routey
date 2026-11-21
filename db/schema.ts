@@ -49,6 +49,8 @@ export const businesses = pgTable("businesses", {
   homeAddress: text("home_address"),
   homeLat: doublePrecision("home_lat"),
   homeLng: doublePrecision("home_lng"),
+  // Decides what "today" means for routes and reports.
+  timezone: text("timezone").notNull().default("America/New_York"),
   // When true, invoices wait for the owner instead of going out on Done.
   holdInvoices: boolean("hold_invoices").notNull().default(false),
   nextInvoiceNumber: integer("next_invoice_number").notNull().default(1001),

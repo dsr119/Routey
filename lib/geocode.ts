@@ -7,7 +7,8 @@ export type Place = { address: string; lat: number; lng: number };
 export async function geocode(address: string): Promise<Place | null> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key || !address.trim()) return null;
-  const url = new URL("https://maps.googleapis.com/maps/api/geocode/json");
+  // GOOGLE_GEOCODE_URL only exists so tests can point at a fake server.
+  const url = new URL(process.env.GOOGLE_GEOCODE_URL ?? "https://maps.googleapis.com/maps/api/geocode/json");
   url.searchParams.set("address", address);
   url.searchParams.set("key", key);
   try {
