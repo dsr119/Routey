@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { clients, crews, jobs, properties, routes, stops, timeEntries, users } from "@/db/schema";
+import { clients, crews, invoices, jobs, properties, routes, stops, timeEntries, users } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { businessTimezone } from "@/lib/crew";
 import { dayLabel, minutesBetween, timeIn, todayIn } from "@/lib/dates";
@@ -33,6 +33,8 @@ export default async function OwnerToday() {
       clientId: clients.id,
       address: properties.address,
       estimatedMinutes: jobs.estimatedMinutes,
+      invoiceId: invoices.id,
+      invoiceStatus: invoices.status,
     })
     .from(stops)
     .innerJoin(routes, eq(stops.routeId, routes.id))
@@ -40,11 +42,14 @@ export default async function OwnerToday() {
     .innerJoin(jobs, eq(stops.jobId, jobs.id))
     .innerJoin(properties, eq(jobs.propertyId, properties.id))
     .innerJoin(clients, eq(properties.clientId, clients.id))
+    .leftJoin(invoices, eq(invoices.stopId, stops.id))
     .where(and(eq(routes.businessId, owner.businessId), eq(routes.day, day)))
     .orderBy(asc(crews.name), asc(stops.position));
 
   const routeIds = [...new Set(todayStops.map((s) => s.routeId))];
-  const needsLook = todayStops.filter((s) => s.extraWorkNote || s.status === "not_done");
+  const needsLook = todayStops.filter(
+    (s) => (s.extraWorkNote && s.invoiceStatus === "draft") || s.status === "not_done",
+  );
 
   return (
     <>
@@ -73,7 +78,12 @@ export default async function OwnerToday() {
                 <Link href={`/owner/clients/${s.clientId}`}>{s.client}</Link>:{" "}
                 {s.status === "not_done"
                   ? `couldn't finish. "${s.notDoneReason}"`
-                  : `extra work to price. "${s.extraWorkNote}"`}
+                  : (
+                    <>
+                      extra work to price. &quot;{s.extraWorkNote}&quot;{" "}
+                      <Link href={`/owner/invoices/${s.invoiceId}`}>Price it</Link>
+                    </>
+                  )}
               </li>
             ))}
           </ul>
