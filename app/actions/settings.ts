@@ -79,9 +79,13 @@ export async function changeTaxRate(form: FormData) {
 
 export async function updateInvoiceSettings(_: ActionResult, form: FormData): Promise<ActionResult> {
   const owner = await requireRole("owner");
+  const days = Number(String(form.get("paymentTermsDays") ?? "").trim());
+  if (!Number.isInteger(days) || days < 0 || days > 365) {
+    return { error: "Enter the number of days clients have to pay, from 0 to 365." };
+  }
   await db
     .update(businesses)
-    .set({ holdInvoices: form.get("holdInvoices") === "on" })
+    .set({ holdInvoices: form.get("holdInvoices") === "on", paymentTermsDays: days })
     .where(eq(businesses.id, owner.businessId));
   revalidatePath("/owner/settings");
   return { message: "Saved." };

@@ -8,6 +8,7 @@ type Props = {
     createdAt: Date;
     sentAt: Date | null;
     paidAt: Date | null;
+    dueAt?: Date | null;
     taxRateMilli: number;
     subtotalCents: number;
     taxCents: number;
@@ -58,6 +59,7 @@ export default function InvoiceView(p: Props) {
             <strong>{STATUS_LABELS[p.invoice.status]}</strong>
             {p.invoice.paidAt && ` ${date(p.invoice.paidAt)}`}
           </div>
+          {p.invoice.status === "sent" && p.invoice.dueAt && <div>Due {date(p.invoice.dueAt)}</div>}
         </div>
       </div>
 

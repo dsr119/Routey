@@ -10,7 +10,7 @@ It starts as an app for one business, but it may be opened to other businesses l
 
 - Web app first, made to work well on a phone. App store versions can come later.
 - Stripe for card payments and pay links.
-- Email only for client messages, to save money. No texts. Push notifications come later, once there's an app store version.
+- Client messages go by email. Invoices also go by text (Twilio), for clients who agree to texts. Nothing else is texted, to keep costs down. Push notifications come later, once there's an app store version.
 - Google Maps for addresses and routing.
 - The owner assigns routes to employees.
 - Clients see how many stops away the crew is, not a live map.
@@ -31,7 +31,8 @@ It starts as an app for one business, but it may be opened to other businesses l
 | Hosting | Vercel | Pushes to GitHub deploy on their own. Free tier to start. |
 | Styling | Plain CSS, plus ready-made pieces where they save time (calendar, date picker, a font) | Simple now, easy to dress up later. |
 | Payments | Stripe Checkout links | Stripe hosts the card form, so card numbers never touch our server. |
-| Email | Resend or Postmark | Cheap, reliable invoice emails. |
+| Email | Resend | Cheap, reliable invoice emails. |
+| Texts | Twilio | Invoice texts only. |
 | Maps and routes | Google Maps (address lookup, Routes API) | |
 | Accounting | QuickBooks Online API | |
 
@@ -58,7 +59,7 @@ Logs in with ID number and PIN.
 - Clock in and clock out.
 - **My route**: today's stops in order, with a button to open directions in Google Maps.
 - Employees never see prices, invoices or income.
-- At each stop: **Arrived** starts the timer, **Done** stops it and emails the client their invoice with a pay link. The invoice uses the job's usual price. If the job was different (extra work, a bigger storm), the employee notes the extra work and that invoice waits for the owner to price it. The owner can also set all invoices to wait for review.
+- At each stop: **Arrived** starts the timer, **Done** stops it and emails the client their invoice with a pay link, and texts the link too if the client agreed to texts. The invoice uses the job's usual price. If the job was different (extra work, a bigger storm), the employee notes the extra work and that invoice waits for the owner to price it. The owner can also set all invoices to wait for review.
 - **Can't complete**: pick or type a reason, attach photos. The owner is told.
 - **Notes for owner**: things noticed at the property that the client should have done. Saved on the client's profile.
 - **Receipts**: snap a photo of a fuel or materials receipt, enter the amount, attach it to a client or mark it general.
@@ -93,7 +94,7 @@ Main tables, kept small. Every table except businesses carries a business id, so
 - **estimates** and **invoices**, each with **line items**: description, quantity, price, taxable. Invoices also store tax rate, totals, status, Stripe link, QuickBooks id.
 - **payments**: invoice, amount, method, Stripe payment id, date.
 - **receipts**: amount, category (fuel, materials, other), photo, client if any, who uploaded.
-- **messages**: every email sent to a client, kept on their profile.
+- **messages**: every email and text sent to a client, kept on their profile.
 - **tags**: labels the owner puts on clients and jobs to sort them.
 - **tax_rates**: name and percent, set by the owner.
 - **time_slots** and **appointments**: open estimate times and client bookings.
@@ -104,7 +105,7 @@ Main tables, kept small. Every table except businesses carries a business id, so
 
 If Routey goes public, each business connects its own Stripe account (Stripe Connect) so money goes straight to them. For now it's just his account.
 
-**Email, not texts.** All client messages go by email through Resend: invoices, "on the way" notices and reminders. Texting was dropped to save money and skip the carrier registration it needs. When the app goes to the App Store and Google Play, push notifications take the place texts would have had.
+**Email, and texts for invoices.** Client messages go by email through Resend: invoices, "on the way" notices and reminders. Invoices are also texted through Twilio to clients who agreed to texts (a checkbox on the client). US carriers require business texting to be registered (called A2P 10DLC). Approval takes a few days to a few weeks and has small fees, so it should start early. Until it's approved, invoices still go out by email. When the app goes to the App Store and Google Play, push notifications take over the other notices.
 
 **Google Maps.** Turns typed addresses into map points and suggests full addresses as you type. The Routes API reorders stops into the shortest drive. It handles up to 25 stops per request. If a route ever needs more, we split it or move to Google's Route Optimization API.
 
@@ -120,8 +121,9 @@ If Routey goes public, each business connects its own Stripe account (Stripe Con
 4. Route builder with Optimize and custom start and end points, assigned to a crew by date.
 5. Employee day screen: clock in and out, Arrived and Done per stop, time on site. No prices shown.
 6. Invoices with sales tax set by the owner and his logo.
-7. Stripe pay link emailed when a stop is marked Done. Paid status updates on its own.
-8. Client screen: stops away, invoices, pay.
+7. Stripe pay link emailed (and texted, once Twilio is approved) when a stop is marked Done. Paid status updates on its own.
+8. Invoice dashboard: what's owed, what's overdue, what was paid this month, and for each invoice whether the client opened it, paid it, or is past due. Invoices are due a set number of days after they go out (15 unless the owner changes it in Settings).
+9. Client screen: stops away, invoices, pay.
 
 At the end of Phase 1 he can run a real day: plan a route, have a crew work it, bill the clients and get paid.
 
@@ -191,7 +193,9 @@ Only if he and you decide to.
 
 **Sales tax.** Whether lawn care or plowing is taxable depends on the state, and the rate depends on the town. Routey lets each owner set rates and mark each item taxable. It doesn't decide for them, which also means it works in any state if it goes public.
 
-**Monthly costs.** Hosting and database start free. Email through Resend is free up to 100 a day, then about $20 a month. Google Maps has a free monthly allowance that a small business likely stays under. Stripe takes its fee per payment. These are estimates.
+**Texting registration delay.** See Twilio above. Start early.
+
+**Monthly costs.** Hosting and database start free. Email through Resend is free up to 100 a day, then about $20 a month. Texts are about a penny each plus a phone number around $1 to $2 a month. Google Maps has a free monthly allowance that a small business likely stays under. Stripe takes its fee per payment. These are estimates.
 
 ## Open questions
 

@@ -36,3 +36,7 @@ export function timeIn(timezone: string, at: Date): string {
 export function minutesBetween(from: Date, to: Date): number {
   return Math.max(0, Math.round((to.getTime() - from.getTime()) / 60_000));
 }
+
+export function shortDateIn(timezone: string, at: Date): string {
+  return at.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: timezone });
+}

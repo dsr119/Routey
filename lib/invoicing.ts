@@ -14,8 +14,10 @@ import {
   taxRates,
 } from "@/db/schema";
 import { sendEmail } from "./email";
+import { dueDate } from "./invoice-status";
 import { totals } from "./invoice-math";
 import { formatCents } from "./money";
+import { sendText } from "./sms";
 import { appUrl, stripe } from "./stripe";
 
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -129,25 +131,64 @@ export async function emailInvoice(invoiceId: number): Promise<{ sent: boolean; 
 }
 
 // Marks an invoice sent, gives it a pay link, and emails the client.
+// Texts the pay link, only to clients who agreed to invoice texts.
+export async function textInvoice(invoiceId: number): Promise<{ sent: boolean; skipped?: boolean; error?: string }> {
+  const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
+  if (!invoice?.payToken) return { sent: false, error: "Send the invoice first." };
+  const client = await db.query.clients.findFirst({ where: eq(clients.id, invoice.clientId) });
+  if (!client?.textInvoices) return { sent: false, skipped: true, error: "This client hasn't agreed to texts." };
+  if (!client.phone) return { sent: false, error: "This client has no phone number on file." };
+  const business = await db.query.businesses.findFirst({ where: eq(businesses.id, invoice.businessId) });
+  const result = await sendText(
+    client.phone,
+    `${business?.name ?? "Invoice"}: invoice #${invoice.number} for ${formatCents(invoice.totalCents)}. ` +
+      `See it and pay: ${payLink(invoice.payToken)} Reply STOP to stop texts.`,
+  );
+  if (result.sent) {
+    await db.update(invoices).set({ textedAt: new Date() }).where(eq(invoices.id, invoiceId));
+  }
+  return result;
+}
+
 export async function sendInvoice(
   invoiceId: number,
-): Promise<{ ok: boolean; error?: string; emailError?: string }> {
+): Promise<{ ok: boolean; error?: string; emailError?: string; textError?: string }> {
   const invoice = await db.query.invoices.findFirst({ where: eq(invoices.id, invoiceId) });
   if (!invoice) return { ok: false, error: "Invoice not found." };
   if (invoice.status !== "draft") return { ok: false, error: "This invoice was already sent." };
   if (invoice.totalCents <= 0) return { ok: false, error: "The invoice total is $0." };
+  const business = await db.query.businesses.findFirst({ where: eq(businesses.id, invoice.businessId) });
+  const sentAt = new Date();
   const [updated] = await db
     .update(invoices)
     .set({
       status: "sent",
-      sentAt: new Date(),
+      sentAt,
+      dueAt: dueDate(sentAt, business?.paymentTermsDays ?? 15),
       payToken: invoice.payToken ?? randomBytes(18).toString("base64url"),
     })
     .where(and(eq(invoices.id, invoiceId), eq(invoices.status, "draft")))
     .returning({ id: invoices.id });
   if (!updated) return { ok: false, error: "This invoice was already sent." };
   const email = await emailInvoice(invoiceId);
-  return { ok: true, emailError: email.sent ? undefined : email.error };
+  const text = await textInvoice(invoiceId);
+  return {
+    ok: true,
+    emailError: email.sent ? undefined : email.error,
+    textError: text.sent || text.skipped ? undefined : text.error,
+  };
+}
+
+// Counts a look at the pay page. The business's own staff don't count.
+export async function recordInvoiceView(invoiceId: number): Promise<void> {
+  await db
+    .update(invoices)
+    .set({
+      firstViewedAt: sql`coalesce(${invoices.firstViewedAt}, now())`,
+      lastViewedAt: sql`now()`,
+      viewCount: sql`${invoices.viewCount} + 1`,
+    })
+    .where(eq(invoices.id, invoiceId));
 }
 
 // Opens a Stripe Checkout page for an unpaid invoice and returns its URL.

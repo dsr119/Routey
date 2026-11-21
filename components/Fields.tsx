@@ -6,6 +6,7 @@ type Client = {
   phone?: string | null;
   billingAddress?: string | null;
   notes?: string | null;
+  textInvoices?: boolean;
 };
 
 export function ClientFields({ c = {} }: { c?: Client }) {
@@ -25,6 +26,10 @@ export function ClientFields({ c = {} }: { c?: Client }) {
           <input name="phone" type="tel" defaultValue={c.phone ?? ""} />
         </label>
       </div>
+      <label style={{ fontWeight: 400 }}>
+        <input type="checkbox" name="textInvoices" defaultChecked={c.textInvoices ?? false} /> Text invoices to
+        this phone too <span className="hint">(only if the client agreed to texts)</span>
+      </label>
       <label>
         Billing address <span className="hint">(if different from the property)</span>
         <input name="billingAddress" defaultValue={c.billingAddress ?? ""} />

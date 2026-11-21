@@ -1,5 +1,6 @@
 "use server";
 
+import { toE164 } from "@/lib/invoice-status";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -39,6 +40,7 @@ function clientFields(form: FormData) {
     phone: optional(form, "phone"),
     billingAddress: optional(form, "billingAddress"),
     notes: optional(form, "notes"),
+    textInvoices: form.get("textInvoices") === "on",
   };
 }
 
@@ -46,6 +48,7 @@ export async function addClient(_: ActionResult, form: FormData): Promise<Action
   const owner = await requireRole("owner");
   const fields = clientFields(form);
   if (!fields.name) return { error: "Enter the client's name." };
+  if (fields.textInvoices && !toE164(fields.phone)) return { error: "Enter a 10-digit phone number to text invoices." };
   const [row] = await db
     .insert(clients)
     .values({ ...fields, businessId: owner.businessId })
@@ -59,6 +62,7 @@ export async function updateClient(_: ActionResult, form: FormData): Promise<Act
   if (!client) return { error: "Client not found." };
   const fields = clientFields(form);
   if (!fields.name) return { error: "Enter the client's name." };
+  if (fields.textInvoices && !toE164(fields.phone)) return { error: "Enter a 10-digit phone number to text invoices." };
   await db.update(clients).set(fields).where(eq(clients.id, client.id));
   revalidatePath(`/owner/clients/${client.id}`);
   return { message: "Saved." };

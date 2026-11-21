@@ -6,7 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { clients, invoiceLines, invoices, payments, taxRates } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { createInvoice, emailInvoice, refreshTotals, sendInvoice } from "@/lib/invoicing";
+import { createInvoice, emailInvoice, refreshTotals, sendInvoice, textInvoice } from "@/lib/invoicing";
 import { parseDollars } from "@/lib/money";
 import type { ActionResult } from "@/components/ActionForm";
 
@@ -115,7 +115,11 @@ export async function send(_: ActionResult, form: FormData): Promise<ActionResul
   const result = await sendInvoice(invoice.id);
   refresh(invoice.id);
   if (!result.ok) return { error: result.error };
-  return { message: result.emailError ? `Sent, but not emailed: ${result.emailError}` : "Sent." };
+  const problems = [
+    result.emailError && `not emailed: ${result.emailError}`,
+    result.textError && `not texted: ${result.textError}`,
+  ].filter(Boolean);
+  return { message: problems.length ? `Sent, but ${problems.join(" Also ")}` : "Sent." };
 }
 
 export async function emailAgain(_: ActionResult, form: FormData): Promise<ActionResult> {
@@ -125,6 +129,15 @@ export async function emailAgain(_: ActionResult, form: FormData): Promise<Actio
   const result = await emailInvoice(invoice.id);
   refresh(invoice.id);
   return result.sent ? { message: "Emailed." } : { error: result.error };
+}
+
+export async function textAgain(_: ActionResult, form: FormData): Promise<ActionResult> {
+  const owner = await requireRole("owner");
+  const invoice = await ownedInvoice(owner.businessId, Number(form.get("invoiceId")));
+  if (!invoice || invoice.status !== "sent") return { error: "Only unpaid invoices can be texted." };
+  const result = await textInvoice(invoice.id);
+  refresh(invoice.id);
+  return result.sent ? { message: "Texted." } : { error: result.error };
 }
 
 const METHODS = ["cash", "check", "card", "other"];
