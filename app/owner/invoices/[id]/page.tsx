@@ -6,6 +6,8 @@ import { payments, taxRates } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { invoiceWithLines, payLink } from "@/lib/invoicing";
 import { formatPercent } from "@/lib/invoice-math";
+import { daysOverdue, invoiceState } from "@/lib/invoice-status";
+import { shortDateIn } from "@/lib/dates";
 import { centsToInput, formatCents } from "@/lib/money";
 import {
   addLine,
@@ -14,6 +16,7 @@ import {
   removeLine,
   send,
   setInvoiceTax,
+  textAgain,
   updateLine,
   voidInvoice,
 } from "@/app/actions/invoices";
@@ -56,6 +59,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const data = await invoiceWithLines(owner.businessId, id);
   if (!data || !data.business) notFound();
   const { invoice, lines } = data;
+  const now = new Date();
+  const state = invoiceState(invoice, now);
+  const day = (d: Date) => shortDateIn(data.business?.timezone ?? "America/New_York", d);
   const rates = await db
     .select()
     .from(taxRates)
@@ -87,10 +93,22 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <section className="box">
           <p style={{ marginTop: 0 }}>
             {invoice.emailedAt
-              ? `Emailed to ${data.client?.email} on ${invoice.emailedAt.toLocaleDateString("en-US", { month: "short", day: "numeric" })}.`
+              ? `Emailed to ${data.client?.email} on ${day(invoice.emailedAt)}.`
               : data.client?.email
                 ? "Not emailed yet."
                 : "This client has no email. Share the pay link another way, or add their email and send it."}
+            {data.client?.textInvoices &&
+              (invoice.textedAt ? ` Texted to ${data.client.phone} on ${day(invoice.textedAt)}.` : " Not texted yet.")}
+          </p>
+          <p>
+            {invoice.firstViewedAt
+              ? `Opened ${day(invoice.firstViewedAt)}` +
+                (invoice.viewCount > 1 ? `, ${invoice.viewCount} times, last on ${day(invoice.lastViewedAt!)}.` : ".")
+              : "Not opened yet."}
+            {invoice.dueAt &&
+              (state === "overdue"
+                ? ` Overdue by ${daysOverdue(invoice.dueAt, now)} day${daysOverdue(invoice.dueAt, now) === 1 ? "" : "s"} (was due ${day(invoice.dueAt)}).`
+                : ` Due ${day(invoice.dueAt)}.`)}
           </p>
           <p>
             Pay link: <a href={payLink(invoice.payToken)}>{payLink(invoice.payToken)}</a>
@@ -98,11 +116,18 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <p className="muted">
             To take a card in person, open the pay link on your phone and type the card in.
           </p>
-          {data.client?.email && (
-            <ActionForm action={emailAgain} submit={invoice.emailedAt ? "Email again" : "Email it"} keep className="" secondary>
-              <input type="hidden" name="invoiceId" value={invoice.id} />
-            </ActionForm>
-          )}
+          <div className="row">
+            {data.client?.email && (
+              <ActionForm action={emailAgain} submit={invoice.emailedAt ? "Email again" : "Email it"} keep className="" secondary>
+                <input type="hidden" name="invoiceId" value={invoice.id} />
+              </ActionForm>
+            )}
+            {data.client?.textInvoices && data.client.phone && (
+              <ActionForm action={textAgain} submit={invoice.textedAt ? "Text again" : "Text it"} keep className="" secondary>
+                <input type="hidden" name="invoiceId" value={invoice.id} />
+              </ActionForm>
+            )}
+          </div>
         </section>
       )}
 

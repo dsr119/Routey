@@ -119,6 +119,10 @@ export default async function Settings() {
 
       <h2>Invoices</h2>
       <ActionForm action={updateInvoiceSettings} submit="Save" keep>
+        <label style={{ maxWidth: 260 }}>
+          Days to pay <span className="hint">(after an invoice goes out)</span>
+          <input name="paymentTermsDays" inputMode="numeric" defaultValue={biz.paymentTermsDays} required />
+        </label>
         <label style={{ fontWeight: 400 }}>
           <input type="checkbox" name="holdInvoices" defaultChecked={biz.holdInvoices} /> Hold every
           invoice for me to look over before it goes out

@@ -36,6 +36,13 @@
       "when": 1795030473838,
       "tag": "0004_invoice_pay_token",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1795273115627,
+      "tag": "0005_invoice_tracking",
+      "breakpoints": true
     }
   ]
 }

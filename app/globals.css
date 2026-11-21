@@ -81,3 +81,24 @@ button.big { width: 100%; padding: 16px; font-size: 1.15rem; }
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 th { font-size: 0.9rem; color: var(--muted); font-weight: 600; }
+
+/* Invoice dashboard */
+.summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.summary .box { display: flex; flex-direction: column; gap: 2px; margin: 0; color: inherit; text-decoration: none; }
+.summary strong { font-size: 1.4rem; }
+.summary .box.late { border-color: var(--danger); }
+.summary .box.late strong { color: var(--danger); }
+.scroll { overflow-x: auto; }
+.hint { font-size: 0.85rem; color: var(--muted); }
+.state { white-space: nowrap; }
+.state.overdue { color: var(--danger); font-weight: 600; }
+.state.paid { color: var(--accent); }
+.state.void, .state.not_sent { color: var(--muted); }
+@media (max-width: 600px) {
+  table.cards thead { display: none; }
+  table.cards tr { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  table.cards td { border: none; padding: 0; text-align: left !important; }
+  table.cards td::before { content: attr(data-label); display: block; font-size: 0.8rem; color: var(--muted); }
+  table.cards td[data-label="#"]::before { content: "Invoice"; }
+  table.cards tr.total td::before { content: none; }
+}

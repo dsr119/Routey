@@ -56,6 +56,8 @@ export const businesses = pgTable("businesses", {
   // When true, invoices wait for the owner instead of going out on Done.
   holdInvoices: boolean("hold_invoices").notNull().default(false),
   nextInvoiceNumber: integer("next_invoice_number").notNull().default(1001),
+  // Invoices are due this many days after they go out.
+  paymentTermsDays: integer("payment_terms_days").notNull().default(15),
   createdAt: createdAt(),
 });
 
@@ -72,6 +74,8 @@ export const clients = pgTable(
     billingAddress: text("billing_address"),
     notes: text("notes"),
     stripeCustomerId: text("stripe_customer_id"),
+    // The client agreed to get invoice texts. US texting rules need this consent.
+    textInvoices: boolean("text_invoices").notNull().default(false),
     active: boolean("active").notNull().default(true),
     createdAt: createdAt(),
   },
@@ -276,6 +280,13 @@ export const invoices = pgTable(
     // link can see and pay this one invoice, nothing else.
     payToken: text("pay_token"),
     emailedAt: timestamp("emailed_at", { withTimezone: true }),
+    textedAt: timestamp("texted_at", { withTimezone: true }),
+    dueAt: timestamp("due_at", { withTimezone: true }),
+    // When the client first and last opened the pay page, and how often.
+    // Views by the business's own staff don't count.
+    firstViewedAt: timestamp("first_viewed_at", { withTimezone: true }),
+    lastViewedAt: timestamp("last_viewed_at", { withTimezone: true }),
+    viewCount: integer("view_count").notNull().default(0),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     paidAt: timestamp("paid_at", { withTimezone: true }),
     createdAt: createdAt(),

@@ -1,8 +1,10 @@
+import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { businesses, clients, invoiceLines, invoices } from "@/db/schema";
-import { startCheckout } from "@/lib/invoicing";
+import { getCurrentUser } from "@/lib/auth";
+import { recordInvoiceView, startCheckout } from "@/lib/invoicing";
 import { formatCents } from "@/lib/money";
 import InvoiceView from "@/components/InvoiceView";
 
@@ -24,6 +26,23 @@ async function load(token: string) {
   return business ? { invoice, lines, client, business } : null;
 }
 
+// Link previews in texting and email apps, and email link scanners, fetch the
+// page before anyone taps it. They name themselves in the user agent, so skip them.
+const PREVIEW_BOTS = /bot|crawl|spider|preview|facebookexternalhit|whatsapp|slack|discord|scan|safelinks|curl|wget/i;
+
+async function countView(invoiceId: number, businessId: number) {
+  const agent = (await headers()).get("user-agent") ?? "";
+  if (!agent || PREVIEW_BOTS.test(agent)) return;
+  const user = await getCurrentUser();
+  if (user && user.businessId === businessId && user.role !== "client") return;
+  try {
+    await recordInvoiceView(invoiceId);
+  } catch (e) {
+    // Never keep a client from paying because the view count failed.
+    console.error("Couldn't record invoice view", e);
+  }
+}
+
 export default async function PayPage({
   params,
   searchParams,
@@ -36,6 +55,7 @@ export default async function PayPage({
   const data = await load(token);
   if (!data) notFound();
   const { invoice, business } = data;
+  if (invoice.status === "sent") await countView(invoice.id, business.id);
 
   async function pay() {
     "use server";
